@@ -58,13 +58,15 @@ jobs:
           sha256sum ffmpeg-lgpl-v8.1.2-linux-*.tar.gz ffmpeg-lgpl-v8.1.2-linux-*.manifest.json | tee SHA256SUMS
           for arch in x64 arm64; do
             archive="ffmpeg-lgpl-v8.1.2-linux-${arch}.tar.gz"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffmpeg"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffprobe"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/COPYING.LGPLv2.1"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/components/ffmpeg-LGPL-2.1.txt"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/SOURCE.txt"
-            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/manifest.json"
-            tar -tzf "$archive" | grep -q "ffmpeg-lgpl-v8.1.2-linux-${arch}/lib/libavcodec.so"
+            contents="${RUNNER_TEMP}/ffmpeg-${arch}.contents"
+            tar -tzf "$archive" > "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffmpeg" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffprobe" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/COPYING.LGPLv2.1" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/components/ffmpeg-LGPL-2.1.txt" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/SOURCE.txt" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/manifest.json" "$contents"
+            grep -q "ffmpeg-lgpl-v8.1.2-linux-${arch}/lib/libavcodec.so" "$contents"
           done
           enabled="$(gh api "repos/${REPO}/immutable-releases" --jq .enabled)"
           test "$enabled" = "true"
