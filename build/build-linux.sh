@@ -66,7 +66,7 @@ CC="zig cc -target ${ZIG_TARGET}"
   --cc="$CC" \
   --ar="zig ar" \
   --ranlib="zig ranlib" \
-  --nm="zig nm" \
+  --nm="nm" \
   --disable-everything \
   --disable-static \
   --enable-shared \
@@ -100,6 +100,15 @@ CC="zig cc -target ${ZIG_TARGET}"
   --enable-protocol=file,pipe,crypto \
   --extra-ldflags='-Wl,--disable-new-dtags,-rpath,$$ORIGIN' \
   --extra-ldexeflags='-Wl,--disable-new-dtags,-rpath,$$ORIGIN/../lib'
+
+# Zig 0.14.1 has no nm subcommand, so configure uses the native binutils nm.
+# Its glibc 2.28 headers omit sys/sysctl.h even when the symbol links.
+sed -i 's/^#define HAVE_SYSCTL 1$/#define HAVE_SYSCTL 0/' config.h
+sed -i 's/^HAVE_SYSCTL=yes$/!HAVE_SYSCTL=yes/' ffbuild/config.mak
+if grep -q '^#define HAVE_SYSCTL 1$' config.h; then
+  echo "HAVE_SYSCTL is still enabled" >&2
+  exit 1
+fi
 
 make -j"$(nproc)"
 make install
