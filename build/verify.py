@@ -178,7 +178,7 @@ hostile["LD_LIBRARY_PATH"] = fake
 hostile["LD_PRELOAD"] = ""
 run([binaries[0], "-y", "-f", "s16le", "-ar", "16000", "-ac", "1", "-i", "/dev/zero", "-t", "0.1", wav], env=hostile)
 probe = run(
-    [binaries[1], "-print_format", "json", "-show_streams", "-show_format", wav],
+    [binaries[1], "-v", "error", "-print_format", "json", "-show_streams", "-show_format", wav],
     env=hostile,
 )
 parsed = json.loads(probe)
@@ -189,7 +189,7 @@ run(
     env=hostile,
 )
 image_probe = json.loads(
-    run([binaries[1], "-print_format", "json", "-show_streams", jpg], env=hostile)
+    run([binaries[1], "-v", "error", "-print_format", "json", "-show_streams", jpg], env=hostile)
 )
 if image_probe["streams"][0]["codec_name"] != "mjpeg":
     fail("jpeg probe did not report mjpeg")
