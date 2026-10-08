@@ -136,21 +136,17 @@ strip --strip-unneeded "$STAGE/bin/ffmpeg" "$STAGE/bin/ffprobe"
 find "$STAGE/lib" -type f -name 'lib*.so*' -exec strip --strip-unneeded {} \;
 
 # zig cc records -rpath as DT_RUNPATH and ignores --disable-new-dtags.
-# Keep the existing relative value and store it as DT_RPATH.
+# $$ in the recipe is PID-expanded, so set the literal relative DT_RPATH.
 normalize_rpath() {
   local file rpath
   file="$1"
-  rpath="$(patchelf --print-rpath "$file")"
-  if [ -z "$rpath" ]; then
-    echo "missing rpath on $file" >&2
-    exit 1
-  fi
+  rpath="$2"
   patchelf --force-rpath --set-rpath "$rpath" "$file"
 }
-normalize_rpath "$STAGE/bin/ffmpeg"
-normalize_rpath "$STAGE/bin/ffprobe"
+normalize_rpath "$STAGE/bin/ffmpeg" '$ORIGIN/../lib'
+normalize_rpath "$STAGE/bin/ffprobe" '$ORIGIN/../lib'
 while IFS= read -r -d '' file; do
-  normalize_rpath "$file"
+  normalize_rpath "$file" '$ORIGIN'
 done < <(find "$STAGE/lib" -type f -name 'lib*.so*' -print0)
 
 export ARTIFACT VERSION SOURCE_URL SOURCE_SHA256 STAGE ARCH ZIG_TARGET ELF_MACHINE
