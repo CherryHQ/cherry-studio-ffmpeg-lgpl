@@ -194,6 +194,22 @@ image_probe = json.loads(
 if image_probe["streams"][0]["codec_name"] != "mjpeg":
     fail("jpeg probe did not report mjpeg")
 
+
+def required(name):
+    value = os.environ.get(name, "")
+    if not value:
+        fail("missing " + name)
+    return value
+
+
+zig_version = required("ZIG_VERSION")
+zig_url = required("ZIG_URL")
+zig_sha = required("ZIG_SHA256")
+zig_target = required("ZIG_TARGET")
+source_date_epoch = required("SOURCE_DATE_EPOCH")
+if not source_date_epoch.isdigit():
+    fail("SOURCE_DATE_EPOCH is not an integer")
+
 manifest = {
     "schemaVersion": 1,
     "name": "ffmpeg-lgpl",
@@ -223,7 +239,25 @@ manifest = {
     "systemLibraries": sorted(allowed_needed),
     "configure": config,
     "buildRunner": os.environ.get("BUILD_RUNNER", "unknown"),
-    "glibcAbiPin": os.environ.get("ZIG_TARGET", "unknown"),
+    "glibcAbiPin": zig_target,
+    "buildToolchain": {
+        "name": "zig",
+        "version": zig_version,
+        "url": zig_url,
+        "sha256": zig_sha,
+        "target": zig_target,
+        "shipped": False,
+    },
+    "sourceDateEpoch": int(source_date_epoch),
+    "archive": {
+        "format": "tar.gz",
+        "sort": "name",
+        "mtime": "@" + source_date_epoch,
+        "owner": 0,
+        "group": 0,
+        "numericOwner": True,
+        "gzip": "-n",
+    },
     "recipeRepository": "https://github.com/CherryHQ/cherry-studio-ffmpeg-lgpl",
     "recipeCommit": recipe,
 }
@@ -239,7 +273,12 @@ with open(os.path.join(stage, "SOURCE.txt"), "w") as handle:
                 "Source: " + source_url,
                 "SHA256: " + source_sha,
                 "Build runner: " + os.environ.get("BUILD_RUNNER", "unknown"),
-                "glibc ABI pin: " + os.environ.get("ZIG_TARGET", "unknown"),
+                "Build toolchain: zig " + zig_version + " (not a shipped runtime component)",
+                "Build toolchain URL: " + zig_url,
+                "Build toolchain SHA256: " + zig_sha,
+                "Build toolchain target: " + zig_target,
+                "Source date epoch: " + source_date_epoch,
+                "Archive: tar --sort=name --mtime=@" + source_date_epoch + " --owner=0 --group=0 --numeric-owner | gzip -n",
                 "Recipe: https://github.com/CherryHQ/cherry-studio-ffmpeg-lgpl",
                 "Recipe commit: " + recipe,
                 "Executable RPATH: $ORIGIN/../lib (DT_RPATH)",
@@ -248,7 +287,8 @@ with open(os.path.join(stage, "SOURCE.txt"), "w") as handle:
                 "glibc observed: " + manifest["glibcObserved"],
                 "Replaceable objects: lib/libav*.so* and lib/libsw*.so*",
                 "No GPL-only or nonfree library is configured or linked.",
-                "System libraries are not bundled: libc, libm, libdl, libpthread, librt, libz, and the dynamic linker.",
+                "zlib is disabled with --disable-zlib and is not linked.",
+                "System libraries are not bundled: libc, libm, libdl, libpthread, librt, and the dynamic linker.",
                 "",
             ]
         )

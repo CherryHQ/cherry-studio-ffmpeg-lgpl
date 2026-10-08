@@ -31,6 +31,8 @@ esac
 
 VERSION="8.1.2"
 ZIG_VERSION="0.14.1"
+# Pinned archive clock: 2025-05-21T00:00:00Z. Runner mtimes must not enter the tarball.
+SOURCE_DATE_EPOCH=1747785600
 SOURCE_URL="https://ffmpeg.org/releases/ffmpeg-${VERSION}.tar.xz"
 SOURCE_SHA256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c"
 ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
@@ -83,7 +85,6 @@ CC="zig cc -target ${ZIG_TARGET}"
   --disable-doc \
   --disable-autodetect \
   --disable-avdevice \
-  --disable-postproc \
   --disable-network \
   --disable-iconv \
   --disable-bzlib \
@@ -126,10 +127,17 @@ strip --strip-unneeded "$STAGE/bin/ffmpeg" "$STAGE/bin/ffprobe"
 find "$STAGE/lib" -type f -name 'lib*.so*' -exec strip --strip-unneeded {} \;
 
 export ARTIFACT VERSION SOURCE_URL SOURCE_SHA256 STAGE ARCH ZIG_TARGET ELF_MACHINE
+export ZIG_VERSION ZIG_URL ZIG_SHA256 SOURCE_DATE_EPOCH
 export RECIPE_COMMIT="${GITHUB_SHA:-unknown}"
 export BUILD_RUNNER="${RUNNER_LABEL:-unknown}"
 python3 "$ROOT/build/verify.py"
 
 cp "$STAGE/manifest.json" "$DIST/${ARTIFACT}.manifest.json"
-tar -C "$WORK/stage" -czf "$DIST/${ARTIFACT}.tar.gz" "$ARTIFACT"
+# Sorted names, pinned mtime, uid/gid 0. gzip -n omits the gzip name and timestamp.
+find "$STAGE" -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
+find "$STAGE" -type d -exec chmod 755 {} +
+find "$STAGE" -type f -exec chmod 644 {} +
+chmod 755 "$STAGE/bin/ffmpeg" "$STAGE/bin/ffprobe"
+tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner \
+  -C "$WORK/stage" -cf - "$ARTIFACT" | gzip -n > "$DIST/${ARTIFACT}.tar.gz"
 echo "built $DIST/${ARTIFACT}.tar.gz"
