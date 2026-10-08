@@ -44,7 +44,7 @@ STAGE="${WORK}/stage/${ARTIFACT}"
 DIST="${ROOT}/dist"
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends build-essential nasm pkg-config xz-utils curl python3 ca-certificates
+sudo apt-get install -y --no-install-recommends build-essential nasm pkg-config xz-utils curl python3 ca-certificates patchelf
 
 rm -rf "$WORK"
 mkdir -p "$WORK/zig" "$DIST"
@@ -134,6 +134,24 @@ EOF
 
 strip --strip-unneeded "$STAGE/bin/ffmpeg" "$STAGE/bin/ffprobe"
 find "$STAGE/lib" -type f -name 'lib*.so*' -exec strip --strip-unneeded {} \;
+
+# zig cc records -rpath as DT_RUNPATH and ignores --disable-new-dtags.
+# Keep the existing relative value and store it as DT_RPATH.
+normalize_rpath() {
+  local file rpath
+  file="$1"
+  rpath="$(patchelf --print-rpath "$file")"
+  if [ -z "$rpath" ]; then
+    echo "missing rpath on $file" >&2
+    exit 1
+  fi
+  patchelf --force-rpath --set-rpath "$rpath" "$file"
+}
+normalize_rpath "$STAGE/bin/ffmpeg"
+normalize_rpath "$STAGE/bin/ffprobe"
+while IFS= read -r -d '' file; do
+  normalize_rpath "$file"
+done < <(find "$STAGE/lib" -type f -name 'lib*.so*' -print0)
 
 export ARTIFACT VERSION SOURCE_URL SOURCE_SHA256 STAGE ARCH ZIG_TARGET ELF_MACHINE
 export ZIG_VERSION ZIG_URL ZIG_SHA256 SOURCE_DATE_EPOCH
