@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: linux-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build on the native runner
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          RUNNER_LABEL: ${{ matrix.runner }}
+        run: bash build/build-linux.sh ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-lgpl-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.manifest.json
+          if-no-files-found: error
+
+  publish:
+    name: publish immutable release
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ffmpeg-lgpl-*
+          merge-multiple: true
+          path: dist
+      - name: Write checksums and publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ffmpeg-lgpl-v8.1.2-r1
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum ffmpeg-lgpl-v8.1.2-linux-*.tar.gz ffmpeg-lgpl-v8.1.2-linux-*.manifest.json | tee SHA256SUMS
+          for arch in x64 arm64; do
+            archive="ffmpeg-lgpl-v8.1.2-linux-${arch}.tar.gz"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffmpeg"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffprobe"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/COPYING.LGPLv2.1"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/components/ffmpeg-LGPL-2.1.txt"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/SOURCE.txt"
+            tar -tzf "$archive" | grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/manifest.json"
+            tar -tzf "$archive" | grep -q "ffmpeg-lgpl-v8.1.2-linux-${arch}/lib/libavcodec.so"
+          done
+          enabled="$(gh api "repos/${REPO}/immutable-releases" --jq .enabled)"
+          test "$enabled" = "true"
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "release ${TAG} already exists" >&2
+            exit 1
+          fi
+          printf '%s\n' \
+            'Native Linux x64 and arm64 LGPL-2.1 shared FFmpeg 8.1.2 runtime.' \
+            'x64 was built on ubuntu-24.04. arm64 was built on ubuntu-24.04-arm.' \
+            'Both pin the glibc 2.28 ABI on the same architecture. zlib is not linked.' \
+            'Executables use DT_RPATH $ORIGIN/../lib. Shared libraries use DT_RPATH $ORIGIN.' \
+            > release-notes.txt
+          gh release create "$TAG" --repo "$REPO" --target "${GITHUB_SHA}" --draft --title "$TAG" --notes-file release-notes.txt
+          gh release upload "$TAG" --repo "$REPO" \
+            ffmpeg-lgpl-v8.1.2-linux-x64.tar.gz \
+            ffmpeg-lgpl-v8.1.2-linux-x64.manifest.json \
+            ffmpeg-lgpl-v8.1.2-linux-arm64.tar.gz \
+            ffmpeg-lgpl-v8.1.2-linux-arm64.manifest.json \
+            SHA256SUMS
+          gh release edit "$TAG" --repo "$REPO" --draft=false
+          immutable="$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq .immutable)"
+          test "$immutable" = "true"
+          echo "published ${TAG} immutable=${immutable}"
