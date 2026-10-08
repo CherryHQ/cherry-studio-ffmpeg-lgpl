@@ -59,7 +59,6 @@ echo "${SOURCE_SHA256}  ffmpeg-${VERSION}.tar.xz" | sha256sum -c -
 tar -xf "ffmpeg-${VERSION}.tar.xz"
 cd "ffmpeg-${VERSION}"
 
-# $$ survives configure and becomes $ORIGIN when Make runs the linker.
 CC="zig cc -target ${ZIG_TARGET}"
 ./configure \
   --prefix="$PREFIX" \
@@ -97,9 +96,7 @@ CC="zig cc -target ${ZIG_TARGET}"
   --enable-parser=h264,hevc,aac,opus,vp8,vp9,mjpeg \
   --enable-bsf=aac_adtstoasc \
   --enable-filter=scale,aresample,aformat,format \
-  --enable-protocol=file,pipe,crypto \
-  --extra-ldflags='-Wl,--disable-new-dtags,-rpath,$$ORIGIN' \
-  --extra-ldexeflags='-Wl,--disable-new-dtags,-rpath,$$ORIGIN/../lib'
+  --enable-protocol=file,pipe,crypto
 
 # Zig 0.14.1 has no nm subcommand, so configure uses the native binutils nm.
 # Its glibc 2.28 headers omit sys/sysctl.h even when the symbol links.
@@ -135,13 +132,17 @@ EOF
 strip --strip-unneeded "$STAGE/bin/ffmpeg" "$STAGE/bin/ffprobe"
 find "$STAGE/lib" -type f -name 'lib*.so*' -exec strip --strip-unneeded {} \;
 
-# zig cc records -rpath as DT_RUNPATH and ignores --disable-new-dtags.
-# $$ in the recipe is PID-expanded, so set the literal relative DT_RPATH.
+# patchelf is the only source of the literal DT_RPATH.
 normalize_rpath() {
-  local file rpath
+  local file rpath actual
   file="$1"
   rpath="$2"
   patchelf --force-rpath --set-rpath "$rpath" "$file"
+  actual="$(patchelf --print-rpath "$file")"
+  if [ "$actual" != "$rpath" ]; then
+    echo "rpath on $file is ${actual}, expected ${rpath}" >&2
+    exit 1
+  fi
 }
 normalize_rpath "$STAGE/bin/ffmpeg" '$ORIGIN/../lib'
 normalize_rpath "$STAGE/bin/ffprobe" '$ORIGIN/../lib'
