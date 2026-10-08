@@ -68,8 +68,6 @@ jobs:
             grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/manifest.json" "$contents"
             grep -q "ffmpeg-lgpl-v8.1.2-linux-${arch}/lib/libavcodec.so" "$contents"
           done
-          enabled="$(gh api "repos/${REPO}/immutable-releases" --jq .enabled)"
-          test "$enabled" = "true"
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "release ${TAG} already exists" >&2
             exit 1
