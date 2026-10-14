@@ -50,7 +50,7 @@ jobs:
       - name: Write checksums and publish the draft
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ffmpeg-lgpl-v8.1.2-r1
+          TAG: ffmpeg-lgpl-v8.1.2-r2
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
