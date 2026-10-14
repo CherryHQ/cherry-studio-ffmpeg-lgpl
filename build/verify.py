@@ -112,6 +112,106 @@ def clean_env():
     return env
 
 
+def listed(text, name):
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[1] == name:
+            return True
+    return False
+
+
+def assert_component(binary, flag, name):
+    output = run([binary, "-hide_banner", flag], env=hostile)
+    if not listed(output, name):
+        fail(name + " is missing from ffmpeg " + flag + ":\n" + output[-2000:])
+
+
+def write_ppm(path, rgb):
+    width = 64
+    height = 64
+    pixel = bytes((rgb[0], rgb[1], rgb[2]))
+    with open(path, "wb") as handle:
+        handle.write(("P6\n%d %d\n255\n" % (width, height)).encode("ascii"))
+        handle.write(pixel * (width * height))
+
+
+def scene_changes(output):
+    changes = []
+    timestamp = None
+    for line in output.splitlines():
+        time_match = re.search(r"pts_time:\s*([0-9]*\.?[0-9]+)", line)
+        if time_match:
+            timestamp = float(time_match.group(1))
+            continue
+        score_match = re.search(r"lavfi\.scene_score=\s*([0-9]*\.?[0-9]+)", line)
+        if score_match and timestamp is not None:
+            changes.append((timestamp, float(score_match.group(1))))
+            timestamp = None
+    return changes
+
+
+def assert_scene_scan(binary):
+    # nullenc.c defaults -f null video to the LGPL wrapped_avframe encoder.
+    for flag, name in (
+        ("-filters", "select"),
+        ("-filters", "metadata"),
+        ("-filters", "scale"),
+        ("-filters", "format"),
+        ("-muxers", "null"),
+        ("-encoders", "wrapped_avframe"),
+    ):
+        assert_component(binary, flag, name)
+    scene_dir = os.path.join(media, "scene")
+    os.makedirs(scene_dir)
+    for index in range(30):
+        color = (255, 255, 255) if 10 <= index <= 19 else (0, 0, 0)
+        write_ppm(os.path.join(scene_dir, "frame%03d.ppm" % index), color)
+    filtergraph = (
+        "select='isnan(prev_selected_t)+gt(floor(t*5),floor(prev_selected_t*5))',"
+        "scale=64:-2,format=rgb24,select='gt(scene,0.3)',metadata=print"
+    )
+    command = [
+        binary,
+        "-y",
+        "-f",
+        "image2",
+        "-framerate",
+        "10",
+        "-start_number",
+        "0",
+        "-i",
+        os.path.join(scene_dir, "frame%03d.ppm"),
+        "-map",
+        "0:V:0",
+        "-an",
+        "-vf",
+        filtergraph,
+        "-f",
+        "null",
+        "-",
+    ]
+    try:
+        output = run(command, env=hostile)
+    except subprocess.CalledProcessError as exc:
+        detail = exc.output or ""
+        fail("scene scan command failed:\n" + detail[-4000:])
+    changes = scene_changes(output)
+    expected = (1.0, 2.0)
+    if len(changes) != len(expected):
+        fail(
+            "scene scan returned %s, expected source cuts at 1s and 2s\n%s"
+            % (changes, output[-4000:])
+        )
+    for index, expected_time in enumerate(expected):
+        timestamp, score = changes[index]
+        if timestamp != timestamp or timestamp < 0:
+            fail("scene timestamp is not a valid source time: %s" % (timestamp,))
+        if abs(timestamp - expected_time) > 0.05:
+            fail("scene cut %s at %s, expected %s" % (index, timestamp, expected_time))
+        if score < 0.9 or score > 1.0:
+            fail("scene cut %s score %s is outside 0.9..1" % (index, score))
+
+
 libs = []
 for dirpath, _, filenames in os.walk(os.path.join(stage, "lib")):
     for name in filenames:
@@ -193,6 +293,9 @@ image_probe = json.loads(
 )
 if image_probe["streams"][0]["codec_name"] != "mjpeg":
     fail("jpeg probe did not report mjpeg")
+
+
+assert_scene_scan(binaries[0])
 
 
 def required(name):
