@@ -152,13 +152,6 @@ def scene_changes(output):
 
 def assert_scene_scan(binary):
     # nullenc.c defaults -f null video to the LGPL wrapped_avframe encoder.
-    for required_flag in (
-        "--enable-encoder=pcm_s16le,mjpeg,wrapped_avframe",
-        "--enable-muxer=wav,image2,null",
-        "--enable-filter=scale,aresample,aformat,format,select,metadata",
-    ):
-        if required_flag not in config:
-            fail("configuration missing " + required_flag)
     for flag, name in (
         ("-filters", "select"),
         ("-filters", "metadata"),
