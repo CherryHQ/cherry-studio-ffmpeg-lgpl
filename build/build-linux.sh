@@ -59,6 +59,8 @@ echo "${SOURCE_SHA256}  ffmpeg-${VERSION}.tar.xz" | sha256sum -c -
 tar -xf "ffmpeg-${VERSION}.tar.xz"
 cd "ffmpeg-${VERSION}"
 
+# FFmpeg 8.1.2 nullenc.c sets the null muxer video codec to wrapped_avframe.
+# Scene scan needs that LGPL encoder plus the select and metadata filters.
 CC="zig cc -target ${ZIG_TARGET}"
 ./configure \
   --prefix="$PREFIX" \
@@ -89,13 +91,13 @@ CC="zig cc -target ${ZIG_TARGET}"
   --disable-bzlib \
   --disable-lzma \
   --disable-zlib \
-  --enable-encoder=pcm_s16le,mjpeg \
+  --enable-encoder=pcm_s16le,mjpeg,wrapped_avframe \
   --enable-decoder=h264,hevc,aac,mp3,mp3float,pcm_s16le,pcm_s16be,pcm_s24le,pcm_f32le,vp8,vp9,opus,vorbis,mjpeg,ppm \
-  --enable-muxer=wav,image2 \
+  --enable-muxer=wav,image2,null \
   --enable-demuxer=mov,matroska,flv,mpegts,mp3,wav,ogg,avi,aac,image2,pcm_s16le \
   --enable-parser=h264,hevc,aac,opus,vp8,vp9,mjpeg \
   --enable-bsf=aac_adtstoasc \
-  --enable-filter=scale,aresample,aformat,format \
+  --enable-filter=scale,aresample,aformat,format,select,metadata \
   --enable-protocol=file,pipe,crypto
 
 # Zig 0.14.1 has no nm subcommand, so configure uses the native binutils nm.

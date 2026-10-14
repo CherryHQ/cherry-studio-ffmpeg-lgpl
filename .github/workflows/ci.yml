@@ -1,0 +1,39 @@
+name: CI
+
+# Pull-request validation only. No publish job.
+# contents: read cannot create or edit GitHub Releases.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  build:
+    name: linux-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build on the native runner
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          RUNNER_LABEL: ${{ matrix.runner }}
+        run: bash build/build-linux.sh ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-lgpl-ci-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.manifest.json
+          if-no-files-found: error
