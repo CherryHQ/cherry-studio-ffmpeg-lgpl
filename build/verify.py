@@ -152,6 +152,18 @@ def assert_aiff(ffmpeg, ffprobe):
         run([ffmpeg, "-y", "-i", aiff, "-ar", "16000", "-ac", "1", os.path.join(media, "tone-%d.wav" % bits)], env=hostile)
 
 
+def assert_flac(ffmpeg, ffprobe):
+    # The build has no FLAC encoder, so the fixture is a committed 0.1 s 16 kHz mono sine.
+    assert_component(ffmpeg, "-demuxers", "flac")
+    flac = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "tone.flac")
+    streams = json.loads(
+        run([ffprobe, "-v", "error", "-print_format", "json", "-show_streams", flac], env=hostile)
+    )["streams"]
+    if streams[0]["codec_name"] != "flac":
+        fail("flac probe did not report flac")
+    run([ffmpeg, "-y", "-i", flac, "-ar", "16000", "-ac", "1", os.path.join(media, "tone-flac.wav")], env=hostile)
+
+
 def write_ppm(path, rgb):
     width = 64
     height = 64
@@ -321,6 +333,7 @@ if image_probe["streams"][0]["codec_name"] != "mjpeg":
     fail("jpeg probe did not report mjpeg")
 
 assert_aiff(binaries[0], binaries[1])
+assert_flac(binaries[0], binaries[1])
 
 
 assert_scene_scan(binaries[0])

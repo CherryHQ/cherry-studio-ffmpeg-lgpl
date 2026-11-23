@@ -92,9 +92,9 @@ CC="zig cc -target ${ZIG_TARGET}"
   --disable-lzma \
   --disable-zlib \
   --enable-encoder=pcm_s16le,mjpeg,wrapped_avframe \
-  --enable-decoder=h264,hevc,aac,mp3,mp3float,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s24be,pcm_f32le,vp8,vp9,opus,vorbis,mjpeg,ppm \
+  --enable-decoder=h264,hevc,aac,mp3,mp3float,flac,pcm_s16le,pcm_s16be,pcm_s24le,pcm_s24be,pcm_f32le,vp8,vp9,opus,vorbis,mjpeg,ppm \
   --enable-muxer=wav,image2,null \
-  --enable-demuxer=mov,matroska,flv,mpegts,mp3,wav,ogg,aiff,avi,aac,image2,pcm_s16le \
+  --enable-demuxer=mov,matroska,flv,mpegts,mp3,wav,ogg,aiff,flac,avi,aac,image2,pcm_s16le \
   --enable-parser=h264,hevc,aac,opus,vp8,vp9,mjpeg \
   --enable-bsf=aac_adtstoasc \
   --enable-filter=scale,aresample,aformat,format,select,metadata \
