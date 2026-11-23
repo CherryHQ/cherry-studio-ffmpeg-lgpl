@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 
@@ -124,6 +125,31 @@ def assert_component(binary, flag, name):
     output = run([binary, "-hide_banner", flag], env=hostile)
     if not listed(output, name):
         fail(name + " is missing from ffmpeg " + flag + ":\n" + output[-2000:])
+
+
+def write_aiff(path, bits):
+    # Written by hand: Python 3.13 removed the aifc module. Mono, 16 kHz, 0.1 s of silence.
+    frames = 1600
+    sample_rate = struct.pack(">HQ", 16383 + 13, 16000 << 50)  # 80-bit extended float
+    comm = struct.pack(">hIh", 1, frames, bits) + sample_rate
+    ssnd = struct.pack(">II", 0, 0) + b"\x00" * (frames * bits // 8)
+    body = b"AIFF" + b"COMM" + struct.pack(">I", len(comm)) + comm + b"SSND" + struct.pack(">I", len(ssnd)) + ssnd
+    with open(path, "wb") as handle:
+        handle.write(b"FORM" + struct.pack(">I", len(body)) + body)
+
+
+def assert_aiff(ffmpeg, ffprobe):
+    assert_component(ffmpeg, "-demuxers", "aiff")
+    for bits, codec in ((16, "pcm_s16be"), (24, "pcm_s24be")):
+        aiff = os.path.join(media, "tone-%d.aiff" % bits)
+        write_aiff(aiff, bits)
+        streams = json.loads(
+            run([ffprobe, "-v", "error", "-print_format", "json", "-show_streams", aiff], env=hostile)
+        )["streams"]
+        if streams[0]["codec_name"] != codec:
+            fail("%d-bit aiff probe did not report %s" % (bits, codec))
+        # Transcription reads 16 kHz mono WAV, so the decode path must work too.
+        run([ffmpeg, "-y", "-i", aiff, "-ar", "16000", "-ac", "1", os.path.join(media, "tone-%d.wav" % bits)], env=hostile)
 
 
 def write_ppm(path, rgb):
@@ -293,6 +319,8 @@ image_probe = json.loads(
 )
 if image_probe["streams"][0]["codec_name"] != "mjpeg":
     fail("jpeg probe did not report mjpeg")
+
+assert_aiff(binaries[0], binaries[1])
 
 
 assert_scene_scan(binaries[0])
