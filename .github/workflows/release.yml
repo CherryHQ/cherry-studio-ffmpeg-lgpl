@@ -50,40 +50,40 @@ jobs:
       - name: Write checksums and publish the draft
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ffmpeg-lgpl-v8.1.2-r2
+          TAG: ffmpeg-lgpl-v8.1.3-r1
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           cd dist
-          sha256sum ffmpeg-lgpl-v8.1.2-linux-*.tar.gz ffmpeg-lgpl-v8.1.2-linux-*.manifest.json | tee SHA256SUMS
+          sha256sum ffmpeg-lgpl-v8.1.3-linux-*.tar.gz ffmpeg-lgpl-v8.1.3-linux-*.manifest.json | tee SHA256SUMS
           for arch in x64 arm64; do
-            archive="ffmpeg-lgpl-v8.1.2-linux-${arch}.tar.gz"
+            archive="ffmpeg-lgpl-v8.1.3-linux-${arch}.tar.gz"
             contents="${RUNNER_TEMP}/ffmpeg-${arch}.contents"
             tar -tzf "$archive" > "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffmpeg" "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/bin/ffprobe" "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/COPYING.LGPLv2.1" "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/licenses/components/ffmpeg-LGPL-2.1.txt" "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/SOURCE.txt" "$contents"
-            grep -qx "ffmpeg-lgpl-v8.1.2-linux-${arch}/manifest.json" "$contents"
-            grep -q "ffmpeg-lgpl-v8.1.2-linux-${arch}/lib/libavcodec.so" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/bin/ffmpeg" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/bin/ffprobe" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/licenses/COPYING.LGPLv2.1" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/licenses/components/ffmpeg-LGPL-2.1.txt" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/SOURCE.txt" "$contents"
+            grep -qx "ffmpeg-lgpl-v8.1.3-linux-${arch}/manifest.json" "$contents"
+            grep -q "ffmpeg-lgpl-v8.1.3-linux-${arch}/lib/libavcodec.so" "$contents"
           done
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "release ${TAG} already exists" >&2
             exit 1
           fi
           printf '%s\n' \
-            'Native Linux x64 and arm64 LGPL-2.1 shared FFmpeg 8.1.2 runtime.' \
+            'Native Linux x64 and arm64 LGPL-2.1 shared FFmpeg 8.1.3 runtime.' \
             'x64 was built on ubuntu-24.04. arm64 was built on ubuntu-24.04-arm.' \
             'Both pin the glibc 2.28 ABI on the same architecture. zlib is not linked.' \
             'Executables use DT_RPATH $ORIGIN/../lib. Shared libraries use DT_RPATH $ORIGIN.' \
             > release-notes.txt
           gh release create "$TAG" --repo "$REPO" --target "${GITHUB_SHA}" --draft --title "$TAG" --notes-file release-notes.txt
           gh release upload "$TAG" --repo "$REPO" \
-            ffmpeg-lgpl-v8.1.2-linux-x64.tar.gz \
-            ffmpeg-lgpl-v8.1.2-linux-x64.manifest.json \
-            ffmpeg-lgpl-v8.1.2-linux-arm64.tar.gz \
-            ffmpeg-lgpl-v8.1.2-linux-arm64.manifest.json \
+            ffmpeg-lgpl-v8.1.3-linux-x64.tar.gz \
+            ffmpeg-lgpl-v8.1.3-linux-x64.manifest.json \
+            ffmpeg-lgpl-v8.1.3-linux-arm64.tar.gz \
+            ffmpeg-lgpl-v8.1.3-linux-arm64.manifest.json \
             SHA256SUMS
           gh release edit "$TAG" --repo "$REPO" --draft=false
           immutable="$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq .immutable)"

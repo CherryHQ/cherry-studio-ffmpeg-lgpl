@@ -1,13 +1,13 @@
 # cherry-studio-ffmpeg-lgpl
 
-Reproducible Linux x64 and arm64 LGPL-2.1 shared FFmpeg 8.1.2 runtime for Cherry Studio.
+Reproducible Linux x64 and arm64 LGPL-2.1 shared FFmpeg 8.1.3 runtime for Cherry Studio.
 
-The release tag is `ffmpeg-lgpl-v8.1.2-r1`. Assets are:
+The release tag is `ffmpeg-lgpl-v8.1.3-r1`. Assets are:
 
-- `ffmpeg-lgpl-v8.1.2-linux-x64.tar.gz`
-- `ffmpeg-lgpl-v8.1.2-linux-x64.manifest.json`
-- `ffmpeg-lgpl-v8.1.2-linux-arm64.tar.gz`
-- `ffmpeg-lgpl-v8.1.2-linux-arm64.manifest.json`
+- `ffmpeg-lgpl-v8.1.3-linux-x64.tar.gz`
+- `ffmpeg-lgpl-v8.1.3-linux-x64.manifest.json`
+- `ffmpeg-lgpl-v8.1.3-linux-arm64.tar.gz`
+- `ffmpeg-lgpl-v8.1.3-linux-arm64.manifest.json`
 - `SHA256SUMS`
 
 x64 builds on the native `ubuntu-24.04` runner. arm64 builds on the native `ubuntu-24.04-arm` runner. The workflow does not use QEMU, Docker, or cross-architecture compilation.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Native LGPL-2.1 shared FFmpeg 8.1.2 build.
+# Native LGPL-2.1 shared FFmpeg 8.1.3 build.
 # x64 runs on ubuntu-24.04. arm64 runs on ubuntu-24.04-arm.
 # Ubuntu 24.04's own libc is newer than glibc 2.28, so compilation uses Zig
 # only as a same-architecture glibc 2.28 ABI pin. This is not QEMU, not a
@@ -29,12 +29,12 @@ case "$ARCH" in
     ;;
 esac
 
-VERSION="8.1.2"
+VERSION="8.1.3"
 ZIG_VERSION="0.14.1"
 # Pinned archive clock: 2025-05-21T00:00:00Z. Runner mtimes must not enter the tarball.
 SOURCE_DATE_EPOCH=1747785600
 SOURCE_URL="https://ffmpeg.org/releases/ffmpeg-${VERSION}.tar.xz"
-SOURCE_SHA256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c"
+SOURCE_SHA256="7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3"
 ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
 ARTIFACT="ffmpeg-lgpl-v${VERSION}-linux-${ARCH}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -59,7 +59,7 @@ echo "${SOURCE_SHA256}  ffmpeg-${VERSION}.tar.xz" | sha256sum -c -
 tar -xf "ffmpeg-${VERSION}.tar.xz"
 cd "ffmpeg-${VERSION}"
 
-# FFmpeg 8.1.2 nullenc.c sets the null muxer video codec to wrapped_avframe.
+# FFmpeg 8.1.3 nullenc.c sets the null muxer video codec to wrapped_avframe.
 # Scene scan needs that LGPL encoder plus the select and metadata filters.
 CC="zig cc -target ${ZIG_TARGET}"
 ./configure \
